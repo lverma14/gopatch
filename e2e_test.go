@@ -24,7 +24,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -33,6 +32,7 @@ import (
 	"testing"
 
 	"github.com/rogpeppe/go-internal/txtar"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/multierr"
 )
@@ -55,6 +55,7 @@ func TestIntegration(t *testing.T) {
 
 		t.Run(info.Name(), func(t *testing.T) {
 			runIntegrationTest(t, filepath.Join(testdata, info.Name()))
+			runIntegrationPrintOnlyTest(t, filepath.Join(testdata, info.Name()))
 		})
 	}
 }
@@ -113,7 +114,7 @@ func runIntegrationTest(t *testing.T, testFile string) {
 
 	for _, tt := range ta.Files {
 		t.Run(tt.Name, func(t *testing.T) {
-			if skipTest(testFile, tt.Name) {
+			if skipTest(testsToSkip, testFile, tt.Name) {
 				t.Skipf("skipping unfixed test case %v/%v", testFile, tt.Name)
 			}
 
@@ -140,10 +141,65 @@ func runIntegrationTest(t *testing.T, testFile string) {
 	}
 }
 
-func skipTest(testFile, testName string) bool {
+func runIntegrationPrintOnlyTest(t *testing.T, testFile string) {
+	ta, err := loadTestArchive(testFile)
+	require.NoError(t, err, "failed to load tests from txtar")
+
+	dir, err := ioutil.TempDir("", "gopatch-integration")
+	require.NoError(t, err, "failed to create temporary directory")
+	defer os.RemoveAll(dir)
+
+	require.NoErrorf(t, txtar.Write(ta.Archive, dir),
+		"could not write archive to %q", dir)
+
+	var (
+		args  []string // args for run()
+		stdin []byte
+	)
+	// If there's only one patch, use stdin. Otherwise, use "-p".
+	if ps := ta.Patches; len(ps) == 1 {
+		path := resolvePatchPath(t, filepath.Join(dir, ps[0]))
+		stdin, err = ioutil.ReadFile(path)
+		require.NoError(t, err, "failed to read patch file %q", ps)
+	} else {
+		for _, path := range ps {
+			path = resolvePatchPath(t, filepath.Join(dir, path))
+			args = append(args, "-p", path)
+		}
+	}
+	for _, tt := range ta.Files {
+		t.Run(tt.Name, func(t *testing.T) {
+			if skipTest(testsToSkip, testFile, tt.Name) {
+				t.Skipf("skipping unfixed test case %v/%v", testFile, tt.Name)
+			}
+
+			filePath := filepath.Join(dir, tt.Give)
+			args := append([]string{"--print-only", filePath}, args...)
+			var stdout, stderr bytes.Buffer
+			require.NoError(t, run(args, bytes.NewReader(stdin), &stderr, &stdout),
+				"could not run patch")
+			// test case when patch doesn't apply on the file
+			if skipTest(testsPatchNotApply, testFile, tt.Name) {
+				assert.Equal(t, "", stdout.String())
+			} else {
+				assert.Equal(t, string(tt.Want), stdout.String())
+				assert.Equal(t, string(tt.WantComment), stderr.String())
+			}
+		})
+	}
+}
+
+func skipTest(testMap map[string]struct{}, testFile, testName string) bool {
 	fullName := filepath.Join(filepath.Base(testFile), testName)
-	_, skip := testsToSkip[fullName]
+	_, skip := testMap[fullName]
 	return skip
+}
+
+// testsPatchNotApply is a set of integration tests where the patch does not apply to the input file.
+var testsPatchNotApply = map[string]struct{}{
+	"delete_unnamed_import/named": {},
+	"inline_errors/no_match":      {},
+	"match_named_import/unnamed":  {},
 }
 
 // testsToSkip is a set of integration tests that do not yet pass, but

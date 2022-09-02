@@ -41,19 +41,19 @@ func TestNewArgParser(t *testing.T) {
 		}{
 			{
 				desc: "-d",
-				give: []string{"-d", "-p", "testdata/patch/error.patch", "testdata/test_files/lint_example/test2.go"},
+				give: []string{"-d", "-p", "testdata/patch/error.patch", "testdata/test_files/diff_example/error.go"},
 				want: options{
 					Patches: []string{"testdata/patch/error.patch"},
-					Args:    arguments{Patterns: []string{"testdata/test_files/lint_example/test2.go"}},
+					Args:    arguments{Patterns: []string{"testdata/test_files/diff_example/error.go"}},
 					Diff:    true,
 				},
 			},
 			{
 				desc: "diff",
-				give: []string{"--diff", "-p", "testdata/patch/error.patch", "testdata/test_files/lint_example/test2.go"},
+				give: []string{"--diff", "-p", "testdata/patch/error.patch", "testdata/test_files/diff_example/error.go"},
 				want: options{
 					Patches: []string{"testdata/patch/error.patch"},
-					Args:    arguments{Patterns: []string{"testdata/test_files/lint_example/test2.go"}},
+					Args:    arguments{Patterns: []string{"testdata/test_files/diff_example/error.go"}},
 					Diff:    true,
 				},
 			},
@@ -79,7 +79,7 @@ func TestLoadPatches(t *testing.T) {
 			DisplayVersion: false,
 			Verbose:        false,
 		}
-		opts.Args.Patterns = []string{"testdata/test_files/lint_example/test2.go"}
+		opts.Args.Patterns = []string{"testdata/test_files/diff_example/error.go"}
 		patch, err := loadPatches(token.NewFileSet(), opts, bytes.NewReader(nil))
 		assert.Len(t, patch, 1)
 		require.NoError(t, err)
@@ -91,7 +91,7 @@ func TestLoadPatches(t *testing.T) {
 			Verbose:        false,
 		}
 		opts.Patches = []string{"testdata/patch/error.patch", "testdata/patch/time.patch"}
-		opts.Args.Patterns = []string{"testdata/test_files/lint_example/"}
+		opts.Args.Patterns = []string{"testdata/test_files/diff_example/"}
 		patch, err := loadPatches(token.NewFileSet(), opts, bytes.NewReader(nil))
 		require.NoError(t, err)
 		assert.Equal(t, 2, len(patch))
@@ -103,7 +103,7 @@ func TestLoadPatches(t *testing.T) {
 			DisplayVersion: false,
 			Verbose:        false,
 		}
-		opts.Args.Patterns = []string{"testdata/test_files/test2.go"}
+		opts.Args.Patterns = []string{"testdata/test_files/error.go"}
 		_, err := loadPatches(token.NewFileSet(), opts, bytes.NewReader(nil))
 		assert.ErrorContains(t, err, path)
 		assert.ErrorContains(t, err, "no such file or directory")
@@ -124,16 +124,16 @@ func TestPreview(t *testing.T) {
 				name:     "preview",
 				before:   "single line",
 				after:    "different line",
-				filename: "testdata/test_files/lint_example/time.go",
-				want: "\n--- testdata/test_files/lint_example/time.go\n" +
-					"+++ testdata/test_files/lint_example/time.go\n@@ -1,1 " +
+				filename: "testdata/test_files/diff_example/time.go",
+				want: "\n--- testdata/test_files/diff_example/time.go\n" +
+					"+++ testdata/test_files/diff_example/time.go\n@@ -1,1 " +
 					"+0,0 @@\n-single line\n@@ -0,0 +1,1 @@\n+different line\n",
 			},
 			{
 				name:     "empty file",
-				filename: "testdata/test_files/lint_example/time.go",
-				want: "\n--- testdata/test_files/lint_example/time.go\n" +
-					"+++ testdata/test_files/lint_example/time.go\n",
+				filename: "testdata/test_files/diff_example/time.go",
+				want: "\n--- testdata/test_files/diff_example/time.go\n" +
+					"+++ testdata/test_files/diff_example/time.go\n",
 			},
 		}
 		for _, tt := range tests {
@@ -152,13 +152,13 @@ func TestPreview(t *testing.T) {
 
 	t.Run("nil for strings", func(t *testing.T) {
 		comment := []string{"example comment"}
-		filename := "testdata/test_files/lint_example/time.go"
+		filename := "testdata/test_files/diff_example/time.go"
 		var stderr, stdout bytes.Buffer
 		err := preview(filename, nil, nil, comment, &stderr, &stdout)
 		require.NoError(t, err)
 		outputString := stderr.String() + stdout.String()
-		expectedString := comment[0] + "\n--- testdata/test_files/lint_example/time.go\n+++ " +
-			"testdata/test_files/lint_example/time.go\n"
+		expectedString := comment[0] + "\n--- testdata/test_files/diff_example/time.go\n+++ " +
+			"testdata/test_files/diff_example/time.go\n"
 		assert.Equal(t, expectedString, outputString)
 	})
 }

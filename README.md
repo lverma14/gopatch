@@ -112,21 +112,21 @@ return fmt.Errorf("invalid port: %v", err)
 
 -  `cd` to your Go project's directory.
 
-  ```shell
-  $ cd ~/go/src/example.com/myproject
-  ```
-
-  Run `gopatch` on the project, supplying the previously written patch with the
-  `-p` flag.
-
-  ```shell
-  $ gopatch -p ~/s1028.patch ./...
-  ```
-
-  This will apply the patch on all Go code in your project.
-
-  Check if there were any instances of this issue in your code by running
-  `git diff`.
+    ```shell
+    $ cd ~/go/src/example.com/myproject
+    ```
+  
+    Run `gopatch` on the project, supplying the previously written patch with the
+    `-p` flag.
+  
+    ```shell
+    $ gopatch -p ~/s1028.patch ./...
+    ```
+  
+    This will apply the patch on all Go code in your project.
+  
+    Check if there were any instances of this issue in your code by running
+    `git diff`.
 - Instead, `cd` to your Go project's directory.
 
   ```shell
@@ -166,6 +166,50 @@ return fmt.Errorf("invalid port: %v", err)
  
    func main() {
 
+  ```
+  Note: Only the description comments of patches that actually **apply** are displayed.
+- `cd` to your Go project's directory.
+
+  ```shell
+  $ cd ~/go/src/example.com/myproject
+  ```
+
+  Run `gopatch` on the project, supplying the previously written patch with the
+  `-p` flag along with '--print-only' flag.
+
+  ```shell
+  $ gopatch --print-only -p ~/s1028.patch ./...
+  ```
+
+  This will turn on print-only mode and will print the changed code stdout instead of modifying 
+  all the Go code in your project. To provide more context on what the patch does, if
+  there were description comments in the patch, they will be printed to stderr . 
+  To learn more about description comments jump to section [here](#description-comments)
+
+  For example if we applied patch error.patch to our testfile error.go
+  ```shell
+  $ gopatch --print-only -p ./testdata/patch/error.go ./testdata/test_files/diff_example/
+  ```
+  Output would be :
+  ```
+  This patch replaces instances of fmt.Sprintf()
+  with fmt.Errorf()
+  Patch files can be applied to mutiple files
+  package diff_example
+
+  import (
+        "errors"
+        "fmt"
+  )
+
+  func boo() error {
+        err := errors.New("test")
+        return fmt.Errorf("error: %v", err)
+  }
+
+  func main() {
+        fmt.Println(boo())
+  }
   ```
   Note: Only the description comments of patches that actually **apply** are displayed.
 
@@ -232,7 +276,20 @@ gopatch supports the following command line options.
 
     If this flag is omitted, normal patching occurs which modifies the
     file instead.
+- `--print-only`
 
+  Flag to turn on print-only mode. Provide this flag to write the changed code to stdout instead of modifying the
+  file and display applied patches' [description comments](#description-comments) to stderr if they exist.
+  Use in conjunction with -p to provide patch file.
+
+  Only need to apply the flag once to turn on print-only mode
+
+    ```shell
+    $ gopatch --print-only -p foo.patch -p bar.patch path/to/my/project
+    ```
+
+  If this flag is omitted, normal patching occurs which modifies the
+  file instead.
    
 
 # Patches
@@ -583,10 +640,10 @@ var x identifier
 # Not a description comment
 ```
 
-#### Usage during diff mode
-When diff mode is turned on by the '-d' flag we also display the 
+#### Usage during diff and print-only mode
+When diff or print-only mode is turned on by the '-d' or '--print-only' flag respectively we also display the 
 description/title comments of only the applied patches to help 
-the user understand what the patches do.
+the user understand what the patches do. The comments are printed to stderr
 
 ```shell
 $ gopatch -d -p ~/s1028.patch testdata/test_files/diff_example/error.go
@@ -608,7 +665,7 @@ $ gopatch -d -p ~/s1028.patch testdata/test_files/diff_example/error.go
    func main() {
 
 ```
-  Note: Only the description comments get displayed during diff mode.
+  Note: Only the description comments get displayed during diff & print-only mode.
   Non description comments are ignored. 
   Moreover, only comments from patches that actually apply on the 
   target file are shown.

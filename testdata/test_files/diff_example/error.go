@@ -1,4 +1,4 @@
-package lint_example
+package diff_example
 
 import (
 	"errors"

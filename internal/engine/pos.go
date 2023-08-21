@@ -59,6 +59,14 @@ func (m PosMatcher) Match(v reflect.Value, d data.Data, _ Region) (data.Data, bo
 	if ok {
 		d = pushPosMatch(m.Fset, d, m.Pos, got)
 	}
+	// we are expecting a ( ) but there isn't any
+	// we continue to the next matcher and return match as true
+	// Issue: when can that be wrong i.e. when can that not be a match
+	// Reservation: we should return true only if sliceMatcher is
+	// between these two () i.e. (...)
+	if !got.IsValid() && m.Pos.IsValid() {
+		return d, true
+	}
 	return d, ok
 }
 
